@@ -1,11 +1,15 @@
 """pyjs: Python to Javascript compiler.
 """
 import compiler
+from compiler import ast
 import json
+
+class CompilerError(Exception):
+    pass
     
 def compile(code):
-    ast = compiler.parse(code)
-    return Visitor().visit(ast)
+    _ast = compiler.parse('""\n' + code)
+    return Visitor().visit(_ast)
     
 class Visitor:       
     def __init__(self):
@@ -44,53 +48,100 @@ class Visitor:
         return " && ".join(self(n) for n in node.nodes)
 
     def visit_AssAttr(self, node):
-        pass
+        if node.flags != "OP_ASSIGN":
+            raise CompilerError("Unrecognized node: " + repr(node))
+        
+        if isinstance(node.expr, compiler.ast.Name):
+            yield self(node.expr)
+        else:
+            yield "(" + self(node.expr) + ")"
+        
+        yield "."
+        yield node.attrname
 
     def visit_AssList(self, node):
+        # this will never get called. 
+        # visit_Assign takes care of this.
         pass
 
     def visit_AssName(self, node):
         return node.name
 
     def visit_AssTuple(self, node):
+        # this will never get called. 
+        # visit_Assign takes care of this.
         pass
 
     def visit_Assert(self, node):
-        pass
+        test = self(node.test)
+        # when fail is None, use nil in js.
+        fail = node.fail and self(node.fail) or "nil"
+        
+        return "py.assert(%s, %s);" % (test, fail)
 
     def visit_Assign(self, node):
         left = node.getChildNodes()[0]
         right = node.getChildNodes()[1]
         
-        # TODO: handle subscript and multiple assignments
-        return self(left) + " = " + self(right) + ";"
+        if isinstance(left, (ast.AssList, ast.AssTuple)):
+            return self._visit_multiple_assignment(left, right)
+        else:
+            # TODO: handle subscript and multiple assignments
+            return self(left) + " = " + self(right) + ";"
+            
+    def _visit_multiple_assignment(self, left, right):
+        if not isinstance(right, (ast.List, ast.Tuple)):
+            raise CompilerError("Expected list or tuple, found %s", rigt.__class__.__name__)
+        
+        if len(left.getChildNodes()) != len(right.getChildNodes()):
+            raise CompilerError("Number of items must be same on both sides for multiple assignment")
+            
+        yield "py.tmp = ["
+        yield ", ".join(self(n) for n in right.getChildNodes())
+        yield "]; "
+        
+        for i, n in enumerate(left.getChildNodes()):
+            yield self(n) + " = py.tmp[%d]; " % i
 
     def visit_AugAssign(self, node):
-        pass
+        left = node.node
+        right = node.expr
+        return self(left) + " " + node.op + " " + self(right) + ";"
 
     def visit_Backquote(self, node):
-        pass
+        yield "py.repr("
+        yield self(node.expr)
+        yield ")"
 
     def visit_Bitand(self, node):
-        pass
+        return " & ".join(self(n) for n in node.nodes)
 
     def visit_Bitor(self, node):
-        pass
+        return " | ".join(self(n) for n in node.nodes)
 
     def visit_Bitxor(self, node):
-        pass
+        return " ^ ".join(self(n) for n in node.nodes)
 
     def visit_Break(self, node):
-        pass
+        return "break;"
 
     def visit_CallFunc(self, node):
-        pass
+        f = self(node.node)
+        args = ", ".join(self(n) for n in node.args)
+        if node.star_args or node.dstar_args:
+            return "%s.apply(this, py.make_args([%s], %s, %s))" % (f, args, self(node.star_args) or "nil", self(node.dstar_args) or "nil")
+        else:
+            return "%s(%s)" % (f, args)
 
     def visit_Class(self, node):
         pass
 
     def visit_Compare(self, node):
-        pass
+        yield self(node.expr)
+        yield " "
+        for op, n in node.ops:
+            yield op + " "
+            yield self(n) + " "
 
     def visit_Const(self, node):
         if isinstance(node.value, basestring):
@@ -99,7 +150,7 @@ class Visitor:
             return repr(node.value)
 
     def visit_Continue(self, node):
-        pass
+        return "continue;"
 
     def visit_Decorators(self, node):
         pass
@@ -212,7 +263,12 @@ class Visitor:
         return self(node.left) + " * " + self(node.right)
 
     def visit_Name(self, node):
-        return node.name
+        names = {
+            "True": "true",
+            "False": "false",
+            "None": "nil"
+        }
+        return names.get(node.name, node.name)
 
     def visit_Not(self, node):
         return "!" + self(node.expr)
@@ -280,3 +336,13 @@ class Visitor:
 
     def visit_Yield(self, node):
         pass        
+
+code = """
+def abs(x):
+    if x > 0:
+        return x 
+    else:
+        return -x
+"""
+if __name__ == '__main__':
+    print compile(code)

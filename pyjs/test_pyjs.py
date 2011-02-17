@@ -21,67 +21,73 @@ class TestVisitor:
         assert self("a and b and c") == "a && b && c"
 
     def test_AssAttr(self):
-        pass
+        assert self("a.x = 1") == "a.x = 1;"
+        assert self("(a+b).x = 1") == "(a + b).x = 1;"
 
     def test_AssList(self):
-        pass
+        assert self("[a, b] = b, a") == "py.tmp = [b, a]; a = py.tmp[0]; b = py.tmp[1];"
 
     def test_AssName(self):
-        pass
+        assert self("a = 1") == "a = 1;"
 
     def test_AssTuple(self):
-        pass
+        assert self("a, b = b, a") == "py.tmp = [b, a]; a = py.tmp[0]; b = py.tmp[1];"
 
     def test_Assert(self):
-        pass
+        assert self("assert True") == "py.assert(true, nil);"
 
     def test_Assign(self):
         assert self("a = 1") == "a = 1;"
 
     def test_AugAssign(self):
-        pass
+        assert self("a += 1") == "a += 1;"
 
     def test_Backquote(self):
-        pass
+        assert self("`a`") == "py.repr(a)"
 
     def test_Bitand(self):
-        pass
+        assert self("a & b") == "a & b"
 
     def test_Bitor(self):
-        pass
+        assert self("a | b") == "a | b"
 
     def test_Bitxor(self):
-        pass
+        assert self("a ^ b") == "a ^ b"
 
     def test_Break(self):
-        pass
+        assert self("break") == "break;"
 
     def test_CallFunc(self):
-        pass
+        assert self("f(1)") == "f(1)"
+        assert self("f(1, 2, *a, **kw)") == "f.apply(this, py.make_args([1, 2], a, kw))"
 
     def test_Class(self):
         pass
 
     def test_Compare(self):
-        pass
+        assert self("a == b") == "a == b"
+        assert self("a < b <= c") == "a < b <= c"
 
     def test_Const(self):
-        pass
+        assert self("1") == "1"
+        assert self("'a'") == '"a"'
+        #assert self('"a"') == '"a"'
+        assert self('x + "a"') == 'x + "a"'
 
     def test_Continue(self):
-        pass
+        assert self("continue") == "continue;"
 
     def test_Decorators(self):
         pass
 
     def test_Dict(self):
-        pass
+        assert self("{'a': 1}") == '{"a": 1}'
 
     def test_Discard(self):
         pass
 
     def test_Div(self):
-        pass
+        assert self("a / b") == "a / b"
 
     def test_Ellipsis(self):
         pass
@@ -90,7 +96,7 @@ class TestVisitor:
         pass
 
     def test_FloorDiv(self):
-        pass
+        assert self("a // b") == "py.floordiv(a, b)"
 
     def test_For(self):
         pass
@@ -164,6 +170,10 @@ class TestVisitor:
     def test_Name(self):
         assert self("a") == "a"
         assert self("a_b") == "a_b"
+        
+        assert self("True") == "true"
+        assert self("False") == "false"
+        assert self("None") == "nil"
 
     def test_Not(self):
         assert self("not a") == "!a"
