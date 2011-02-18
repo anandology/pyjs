@@ -1,4 +1,4 @@
 """pyjs: Python to Javascript compiler.
 """
 
-from js import compile
+from pyjs import compile
