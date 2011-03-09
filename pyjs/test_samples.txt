@@ -1,0 +1,94 @@
+# Input file for testing pyjs compiler.
+# 
+# Each test starts with a === followed by a new line and contains python code and expected javascript code separated by ---.
+#
+# Line starting with # are considered as comments and are ignored.
+
+===
+
+# simple function
+
+def f(x):
+    return x
+
+---
+
+function f(x) {
+    return x;
+}
+
+===
+# vars
+
+def add(x, y):
+    sum = x + y
+    return sum
+
+---
+
+function add(x, y) {
+    var sum;
+    sum = x + y;
+    return sum;
+}
+
+===
+
+# vars with loops
+
+def sigma(n):
+    sum = 0
+    for i in range(1, n):
+        sum += i
+    return n
+    
+---
+
+function sigma(n) {
+
+}
+
+===
+
+# test if
+
+if a == 0: b = 0
+
+---
+if (a == 0) {
+    b = 0;
+}
+
+===
+# more if tests
+
+if a < 0: b = 0
+if a > 0: b = 0
+if a > 0 and a < 10: b = 0
+if a in x: b = 1
+if a not in x: b = 1
+
+---
+if (a < 0) { b = 0; }
+if (a > 0) { b = 0; }
+if (a > 0 && a < 10) { b = 0; }
+
+if (py.in(a, x)) { b = 1; }
+if (!py.in(a, x)) { b = 1; }
+
+===
+
+# globals
+
+def f(x):
+    global y
+    y = y + x
+    
+---
+
+function f(x) {
+    py.globals.y = py.globals.y + x;
+}
+
+===
+

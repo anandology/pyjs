@@ -14,6 +14,8 @@ def compile(code):
 class Visitor:       
     def __init__(self):
         self.indent = ""
+        self.globals = []
+        self.stack = []
          
     def visit(self, node):
         if node is None:
@@ -34,6 +36,7 @@ class Visitor:
         else:
             return "".join(code)
     
+    # syntactic sugar for calling visit
     __call__ = visit
     
     def visit_children(self, node, sep=" "):
@@ -65,7 +68,10 @@ class Visitor:
         pass
 
     def visit_AssName(self, node):
-        return node.name
+        if node.name in self.globals:
+            return "py.globals." + node.name
+        else:
+            return node.name
 
     def visit_AssTuple(self, node):
         # this will never get called. 
@@ -137,11 +143,26 @@ class Visitor:
         pass
 
     def visit_Compare(self, node):
-        yield self(node.expr)
-        yield " "
-        for op, n in node.ops:
-            yield op + " "
-            yield self(n) + " "
+        # special treatment if the operator is in or not in
+        if node.ops and node.ops[0][0] in ["in", "not in"]:
+            if len(node.ops) > 1:
+                raise CompilerError('Only 2 operands are supported for "in" and "not in" comparisions')
+                
+            op, n = node.ops[0]
+            if op == "in":
+                yield "py.in(%s, %s)" % (self(node.expr), self(n))
+            elif op == "not in":
+                yield "!py.in(%s, %s)" % (self(node.expr), self(n))
+            elif op == "is":
+                yield "%s === %s" % (self(node.expr), self(n))
+            else:
+                raise CompilerError("Unknown comparision operator: %s" % repr(op))
+        else:
+            yield self(node.expr)
+            yield " "
+            for op, n in node.ops:
+                yield op + " "
+                yield self(n) + " "
 
     def visit_Const(self, node):
         if isinstance(node.value, basestring):
@@ -156,7 +177,7 @@ class Visitor:
         pass
 
     def visit_Dict(self, node):
-        pass
+        return "py.dict([%s])" % ", ".join("[%s, %s]" % (self(name), self(value)) for name, value in node.items)
 
     def visit_Discard(self, node):
         return self.visit_children(node)
@@ -171,16 +192,76 @@ class Visitor:
         pass
 
     def visit_FloorDiv(self, node):
-        pass
+        return "py.floordiv(%s, %s)" % (self(node.left), self(node.right))
 
     def visit_For(self, node):
         pass
 
     def visit_From(self, node):
         pass
-
+        
+    def push(self):
+        self.stack.append(self.globals)
+        self.globals = []
+        
+    def pop(self):
+        self.globals = self.stack.pop()
+        
     def visit_Function(self, node):
-        return "function %s(%s) {\n%s\n}" % (node.name, ", ".join(node.argnames), self.visit(node.code))
+        vars = set(self.extract_vars(node.code))
+            
+        self.push()
+        self.globals = self.extract_gloabls(node.code)
+        vars = [name for name in vars if name not in self.globals]
+        code = self.visit(node.code)
+        self.pop()
+        
+        if vars:
+            var_line = "var %s;\n" % ", ".join(vars)
+        else:
+            var_line = ""
+        
+        return "function %s(%s) {\n%s%s\n}" % (node.name, ", ".join(node.argnames), var_line, code)
+        
+    def extract_vars(self, node):
+        assignments = self.traverse_tree(node, skip=(ast.Function, ast.Lambda))
+        assignments = self.filter_nodes(assignments, (ast.Assign, ast.AugAssign))
+        for n in assignments:
+            if isinstance(n, ast.Assign):
+                left = n.getChildNodes()[0]
+                yield left.name
+            if isinstance(n, ast.AugAssign):
+                left = n.node
+                # TODO: what id left is not a AugName?
+                yield left.name
+            elif isinstance(n, (ast.List, ast.AssTuple)):
+                # TODO:
+                pass
+            else:
+                # TODO: handle subscript and multiple assignments
+                pass
+                
+    def extract_gloabls(self, node):
+        """Extracts variables declared as global."""
+        global_nodes = self.traverse_tree(node, skip=(ast.Function, ast.Lambda))
+        global_nodes = self.filter_nodes(global_nodes, ast.Global)
+        
+        global_names = []
+        for n in global_nodes:
+            global_names += n.names
+        return global_names
+        
+    def traverse_tree(self, node, skip=None):
+        if skip and isinstance(node, skip):
+            return
+        
+        yield node
+        for n in node.getChildNodes():
+            for n2 in self.traverse_tree(n, skip=skip):
+                yield n2
+                    
+    def filter_nodes(self, nodes, type):
+        return [node for node in nodes if isinstance(node, type)]
 
     def visit_GenExpr(self, node):
         pass
@@ -195,15 +276,13 @@ class Visitor:
         pass
 
     def visit_Getattr(self, node):
-        pass
+        return self(node.expr) + "." + node.attrname
 
     def visit_Global(self, node):
         pass
 
     def visit_If(self, node):
         children = node.getChildNodes()
-        if_part, elif_parts, else_part = children[0], children[1:-1], children[-1]
-
         for i, (test, code) in enumerate(node.tests):
             if i == 0:
                 label = "if"
@@ -211,17 +290,10 @@ class Visitor:
                 label = "else if"
 
             yield label
-            yield "("
-            yield self(test)
-            yield ") {"
+            yield " (%s) { %s }" % (self(test), self(code))
 
-            yield self(code)
-            yield "} "
-
-        if else_part:
-            yield "else {"
-            yield self(else_part)
-            yield "} "
+        if node.else_:
+            yield "else { %s }" % self(node.else_)
 
     def visit_IfExp(self, node):
         pass
@@ -268,7 +340,10 @@ class Visitor:
             "False": "false",
             "None": "nil"
         }
-        return names.get(node.name, node.name)
+        if node.name in self.globals:
+            return "py.globals." + node.name
+        else:
+            return names.get(node.name, node.name)
 
     def visit_Not(self, node):
         return "!" + self(node.expr)

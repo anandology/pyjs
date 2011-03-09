@@ -1,5 +1,6 @@
 import pyjs
 from compiler import ast
+import os, re
 
 def _test_compile_string():
     pyjs.compile_string("1") == "1"
@@ -8,10 +9,12 @@ def _test_compile_string():
 
     pyjs.compile_string("if x == 1: y == x * x") == "if (x == 1) { y = x * x; }"
 
-
-class TestVisitor:
+class BaseTest:
     def __call__(self, code):
-        return pyjs.compile(code).strip()
+        js = pyjs.compile(code).strip()
+        return js.replace("\n", " ").replace("  ", " ")
+
+class TestVisitor(BaseTest):
         
     def test_Add(self):
         assert self("1 + 2") == "1 + 2"
@@ -68,6 +71,9 @@ class TestVisitor:
         assert self("a == b") == "a == b"
         assert self("a < b <= c") == "a < b <= c"
 
+        assert self("a in b") == "py.in(a, b)"
+        assert self("a not in b") == "!py.in(a, b)"
+
     def test_Const(self):
         assert self("1") == "1"
         assert self("'a'") == '"a"'
@@ -81,7 +87,7 @@ class TestVisitor:
         pass
 
     def test_Dict(self):
-        assert self("{'a': 1}") == '{"a": 1}'
+        assert self("{'a': 1}") == 'py.dict([["a", 1]])'
 
     def test_Discard(self):
         pass
@@ -120,7 +126,8 @@ class TestVisitor:
         pass
 
     def test_Getattr(self):
-        pass
+        assert self("a.x") == "a.x"
+        assert self("(a+b).x") == "(a+b).x"
 
     def test_Global(self):
         pass
@@ -245,4 +252,50 @@ class TestVisitor:
     def test_Yield(self):
         pass
 
+    def test_complex_code(self):
+        assert self("(1 + 2) * 3") == "(1 + 2) * 3"
+        
+class TestFunctionVars(BaseTest):
+    def test_with_assignment(self):
+        assert self("def f(a, b): sum = a + b; return sum") == "function f(a, b) { var sum; sum = a + b; return sum; }"
 
+    def test_with_AugAssign(self):
+        assert self("def f(a): sum += a; return sum") == "function f(a) { var sum; sum += a; return sum; }"
+        
+    def test_globals(self):
+        assert self("def f(a): global x; x = a; return x") == "function f(a) { py.globals.x = a; return py.globals.x; }"
+        assert self("def f(a): global x; x+= a; return x") == "function f(a) { py.globals.x += a; return py.globals.x; }"
+    
+def test_samples():
+    path = os.path.join(os.path.dirname(__file__), "test_samples.txt")
+    text = open(path).read()
+    
+    for py, js in parse_samples(text):
+        yield do_test_compile, py, js
+        
+def trim_js(js):
+    return re.compile("\s+").sub(" ", js).strip().replace(" )", ")")
+    
+def do_test_compile(py, js):
+    js2 = pyjs.compile(py)
+    
+    js2 = trim_js(js2)
+    js = trim_js(js)
+    
+    template = "Test failed:\n%s\n\nExpected:\n\n%s\n\nGot:\n\n%s\n\n"
+    assert js2 == js, template % (py, js, js2)
+        
+def test_parse_samples():
+    assert list(parse_samples("===\na\n---\nb\n")) == [("a", "b")]
+    assert list(parse_samples("===\na\naa\n---\nb\nbb\n")) == [("a\naa", "b\nbb")]
+
+def parse_samples(text):
+    for test in text.split("==="):
+        if "\n---" in test:
+            py, js = test.split("\n---", 1)
+            
+            # strip comments in js. 
+            # In python compiler takes care of them anyway.
+            js = "\n".join(line for line in js.splitlines() if not line.startswith("#")).strip()
+            
+            yield py.strip(), js.strip()    
