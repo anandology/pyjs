@@ -127,7 +127,7 @@ class TestVisitor(BaseTest):
 
     def test_Getattr(self):
         assert self("a.x") == "a.x"
-        assert self("(a+b).x") == "(a+b).x"
+        assert self("(a+b).x") == "(a + b).x"
 
     def test_Global(self):
         pass

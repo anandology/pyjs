@@ -17,7 +17,11 @@ class Visitor:
         self.globals = []
         self.stack = []
          
-    def visit(self, node):
+    def visit(self, node, parent=None):
+        """Calls the appropriate visit function based on node type.
+        
+        Puts the result between paranthesis if parent is specified and precedenace of node is less than that of parent.
+        """
         if node is None:
             return ""
             
@@ -30,14 +34,30 @@ class Visitor:
             code = self.visit_children(node)
             
         if code is None:
-            return ""
+            code = ""
         elif isinstance(code, basestring):
-            return code
+            pass
         else:
-            return "".join(code)
+            code = "".join(code)
+        
+        if parent and self.get_precedence(node) < self.get_precedence(parent):
+            code = "(%s)" % code
+            
+        return code 
     
     # syntactic sugar for calling visit
     __call__ = visit
+    
+    def get_precedence(self, node):
+        precedence = {
+            ast.Add: 1,
+            ast.Sub: 1,
+            ast.Mul: 2,
+            ast.Div: 2,
+            ast.Getattr: 3,
+        }
+        print "get_precedence", node, precedence.get(node.__class__, 100)
+        return precedence.get(node.__class__, 100)
     
     def visit_children(self, node, sep=" "):
         return sep.join(self.visit(n) for n in node.getChildNodes())
@@ -183,7 +203,7 @@ class Visitor:
         return self.visit_children(node)
 
     def visit_Div(self, node):
-        return self(node.left) + " / " + self(node.right)
+        return self.visit(node.left, parent=node) + " / " + self.visit(node.right, parent=node)
         
     def visit_Ellipsis(self, node):
         pass
@@ -276,7 +296,7 @@ class Visitor:
         pass
 
     def visit_Getattr(self, node):
-        return self(node.expr) + "." + node.attrname
+        return self(node.expr, parent=node) + "." + node.attrname
 
     def visit_Global(self, node):
         pass
@@ -332,7 +352,7 @@ class Visitor:
         return self.visit_children(node)
 
     def visit_Mul(self, node):
-        return self(node.left) + " * " + self(node.right)
+        return self.visit(node.left, parent=node) + " * " + self.visit(node.right, parent=node)
 
     def visit_Name(self, node):
         names = {
