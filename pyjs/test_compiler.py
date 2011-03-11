@@ -126,8 +126,8 @@ class TestVisitor(BaseTest):
         pass
 
     def test_Getattr(self):
-        assert self("a.x") == "a.x"
-        assert self("(a+b).x") == "(a + b).x"
+        assert self("a.x") == 'py.getattr(a, "x")'
+        assert self("(a+b).x") == 'py.getattr(a + b, "x")'
 
     def test_Global(self):
         pass
@@ -199,8 +199,8 @@ class TestVisitor(BaseTest):
         assert self("print x, y,") == 'py.print(x, y);'
 
     def test_Printnl(self):
-        assert self("print x") == 'py.print(x, "\n");'
-        assert self("print x, y") == 'py.print(x, y, "\n");'
+        assert self("print x") == r'py.print(x, "\n");'
+        assert self("print x, y") == r'py.print(x, y, "\n");'
     
     def test_Raise(self):
         pass

@@ -296,7 +296,7 @@ class Visitor:
         pass
 
     def visit_Getattr(self, node):
-        return self(node.expr, parent=node) + "." + node.attrname
+        return "py.getattr(%s, %s)" % (self(node.expr), json.dumps(node.attrname))
 
     def visit_Global(self, node):
         pass
@@ -381,7 +381,7 @@ class Visitor:
         return 'py.print(%s);' % ', '.join(self(n) for n in node.nodes)
 
     def visit_Printnl(self, node):
-        return 'py.print(%s, "\n");' % ', '.join(self(n) for n in node.nodes)
+        return r'py.print(%s, "\n");' % ', '.join(self(n) for n in node.nodes)
 
     def visit_Raise(self, node):
         pass

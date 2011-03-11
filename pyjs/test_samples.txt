@@ -5,6 +5,35 @@
 # Line starting with # are considered as comments and are ignored.
 
 ===
+# hello world
+
+"hello world"
+
+---
+
+"hello world"
+
+===
+# hello world2
+
+r"hello\nworld"
+
+---
+
+"hello\\nworld"
+
+===
+# hello world3
+
+"""
+hello
+world
+"""
+---
+
+"\nhello\nworld\n"
+
+===
 
 # simple function
 
@@ -92,3 +121,12 @@ function f(x) {
 
 ===
 
+# getattr
+
+a.x = b.y
+x = a.f()
+
+---
+
+a.x = py.getattr(b, "y");
+x = py.getattr(a, "f")();
