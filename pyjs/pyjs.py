@@ -423,7 +423,10 @@ class Visitor:
         return "-" + self(node.expr)
 
     def visit_While(self, node):
-        pass
+        condition, code, else_part = node.asList()
+        yield "while (%s) { %s } " % (self(condition), self(code))
+        if else_part:
+            yield "else { %s } " % self(else_part)
 
     def visit_With(self, node):
         pass
