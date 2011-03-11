@@ -133,3 +133,21 @@ x = a.f()
 a.x = py.getattr(b, "y");
 (a1 + a2).x = py.getattr(b, "y");
 x = py.getattr(a, "f")();
+
+===
+
+# if 
+
+if a > 0:
+    x = a
+else:
+    x = -a
+
+--- 
+
+if (a > 0) {
+    x = a;
+}
+else {
+    x = -a;
+}

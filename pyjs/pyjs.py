@@ -56,7 +56,6 @@ class Visitor:
             ast.Div: 2,
             ast.Getattr: 3,
         }
-        print "get_precedence", node, precedence.get(node.__class__, 100)
         return precedence.get(node.__class__, 100)
     
     def visit_children(self, node, sep=" "):
@@ -310,10 +309,10 @@ class Visitor:
                 label = "else if"
 
             yield label
-            yield " (%s) { %s }" % (self(test), self(code))
+            yield " (%s) { %s } " % (self(test), self(code))
 
         if node.else_:
-            yield "else { %s }" % self(node.else_)
+            yield "else { %s } " % self(node.else_)
 
     def visit_IfExp(self, node):
         pass
