@@ -124,9 +124,12 @@ function f(x) {
 # getattr
 
 a.x = b.y
+(a1 + a2).x = b.y
+
 x = a.f()
 
 ---
 
 a.x = py.getattr(b, "y");
+(a1 + a2).x = py.getattr(b, "y");
 x = py.getattr(a, "f")();
