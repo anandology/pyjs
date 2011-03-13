@@ -233,7 +233,7 @@ class Visitor:
             
         self.push()
         self.globals = self.extract_gloabls(node.code)
-        vars = [name for name in vars if name not in self.globals]
+        vars = [name for name in vars if name not in self.globals and name not in node.argnames]
         code = self.visit(node.code)
         self.pop()
         
