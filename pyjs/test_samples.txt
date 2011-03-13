@@ -69,12 +69,18 @@ def sigma(n):
     sum = 0
     for i in range(1, n):
         sum += i
-    return n
+    return sum
     
 ---
 
 function sigma(n) {
-
+	var sum;
+	sum = 0;
+	for (var __i in py.iter(range(1, n))) {
+		i = py.loopvalue;
+		sum += i;
+	}
+	return sum;
 }
 
 ===
@@ -107,6 +113,18 @@ if (!py.in(a, x)) { b = 1; }
 
 ===
 
+# multiple assignments
+
+a, b = c
+
+--- 
+
+py.tmp = c;
+a = py.tmp[0];
+b = py.tmp[1];
+
+===
+
 # globals
 
 def f(x):
@@ -116,7 +134,7 @@ def f(x):
 ---
 
 function f(x) {
-    py.globals.y = py.globals.y + x;
+    y = y + x;
 }
 
 ===

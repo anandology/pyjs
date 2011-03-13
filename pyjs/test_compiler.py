@@ -263,8 +263,7 @@ class TestFunctionVars(BaseTest):
         assert self("def f(a): sum += a; return sum") == "function f(a) { var sum; sum += a; return sum; }"
         
     def test_globals(self):
-        assert self("def f(a): global x; x = a; return x") == "function f(a) { py.globals.x = a; return py.globals.x; }"
-        assert self("def f(a): global x; x+= a; return x") == "function f(a) { py.globals.x += a; return py.globals.x; }"
+        assert self("def f(a): global x; x = a; return x") == "function f(a) { x = a; return x; }"
     
 def test_samples():
     path = os.path.join(os.path.dirname(__file__), "test_samples.txt")

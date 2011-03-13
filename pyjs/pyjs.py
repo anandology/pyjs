@@ -87,10 +87,7 @@ class Visitor:
         pass
 
     def visit_AssName(self, node):
-        if node.name in self.globals:
-            return "py.globals." + node.name
-        else:
-            return node.name
+        return node.name
 
     def visit_AssTuple(self, node):
         # this will never get called. 
@@ -115,15 +112,18 @@ class Visitor:
             return self(left) + " = " + self(right) + ";"
             
     def _visit_multiple_assignment(self, left, right):
-        if not isinstance(right, (ast.List, ast.Tuple)):
-            raise CompilerError("Expected list or tuple, found %s", rigt.__class__.__name__)
+        #if not isinstance(right, (ast.List, ast.Tuple)):
+        #    raise CompilerError("Expected list or tuple, found %s", right.__class__.__name__)
         
-        if len(left.getChildNodes()) != len(right.getChildNodes()):
-            raise CompilerError("Number of items must be same on both sides for multiple assignment")
-            
-        yield "py.tmp = ["
-        yield ", ".join(self(n) for n in right.getChildNodes())
-        yield "]; "
+        #if len(left.getChildNodes()) != len(right.getChildNodes()):
+        #    raise CompilerError("Number of items must be same on both sides for multiple assignment")
+        
+        if isinstance(right, (ast.Tuple, ast.List)) :
+            yield "py.tmp = ["
+            yield ", ".join(self(n) for n in right.getChildNodes())
+            yield "]; "
+        else:
+            yield "py.tmp = %s; " % self(right);
         
         for i, n in enumerate(left.getChildNodes()):
             yield self(n) + " = py.tmp[%d]; " % i
@@ -361,10 +361,7 @@ class Visitor:
             "False": "false",
             "None": "nil"
         }
-        if node.name in self.globals:
-            return "py.globals." + node.name
-        else:
-            return names.get(node.name, node.name)
+        return names.get(node.name, node.name)
 
     def visit_Not(self, node):
         return "!" + self(node.expr)
@@ -427,11 +424,11 @@ class Visitor:
     def visit_While(self, node):
         condition, code, else_part = node.asList()
         yield "while (%s) { %s } " % (self(condition), self(code))
-        if else_part:
-            yield "else { %s } " % self(else_part)
+        #if else_part:
+        #    yield "else { %s } " % self(else_part)
 
     def visit_With(self, node):
         pass
 
     def visit_Yield(self, node):
-        pass        
+        pass
