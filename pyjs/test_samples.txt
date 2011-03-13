@@ -153,15 +153,38 @@ else {
 ===
 # while
 
-product = 1
-while n > 0:
-    product *= n
-    n = n - 1
+def fact(n):
+    product = 1
+    while n > 0:
+        product *= n
+        n = n - 1
+    return product
     
 ---
 
-product = 1;
-while (n > 0) {
-    product *= n;
-    n = n - 1;
+function fact(n) {
+    var product;
+    product = 1;
+    while (n > 0) {
+        product *= n;
+        n = n - 1;
+    }
+    return product;
 }
+
+===
+
+# for
+
+product = 1
+for a, b in x:
+    product *= a
+
+---
+
+product = 1;
+for (var __i in py.iter(x)) {
+	py.tmp = py.loopvalue; a = py.tmp[0]; b = py.tmp[1];
+    product *= a;
+}
+

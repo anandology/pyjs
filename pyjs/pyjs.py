@@ -214,7 +214,9 @@ class Visitor:
         return "py.floordiv(%s, %s)" % (self(node.left), self(node.right))
 
     def visit_For(self, node):
-        pass
+        name, expr, code, else_part = node.asList()
+        assign = ast.Assign([name], ast.Name("py.loopvalue"))
+        yield "for (var __i in py.iter(%s)) { %s %s } " % (self(expr), self(assign), self(code))
 
     def visit_From(self, node):
         pass
